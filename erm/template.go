@@ -27,7 +27,7 @@ func getFuncMap() template.FuncMap {
 		"fieldIsText":              fieldIsText,
 		"mapFieldType":             mapFieldType,
 		"mapFieldTypeLiteral":      mapFieldTypeLiteral,
-		"onlyLetters":              onlyLetters,
+		"onlyLetters":              latinLettersOnly,
 	}
 }
 

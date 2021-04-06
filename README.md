@@ -51,7 +51,7 @@ Usage of gocontentful:
 Note: The last segment of the path/to/target/package will be used as package name
 </code></pre>
 
-###Use case
+### Use case
 
 - You want to generate a package named "people" and manipulate entries of content types with ID "person" and "pet".
 

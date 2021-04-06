@@ -1,11 +1,8 @@
 package erm
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,14 +25,16 @@ func getLocales(CMA *contentful.Contentful, spaceID string) (locales []Locale, e
 
 	col, err := CMA.Locales.List(spaceID).GetAll()
 	if err != nil {
-		log.Fatal("Couldn't get locales")
+		return nil, fmt.Errorf("fetching locales: %w", err)
 	}
 	for _, item := range col.Items {
 		var locale Locale
-		byteArray, _ := json.Marshal(item)
-		err = json.NewDecoder(bytes.NewReader(byteArray)).Decode(&locale)
+		byteArray, err := json.Marshal(item)
 		if err != nil {
-			break
+			return nil, fmt.Errorf("JSON encoding item: %w", err)
+		}
+		if err := json.Unmarshal(byteArray, &locale); err != nil {
+			return nil, fmt.Errorf("JSON decoding item: %w", err)
 		}
 		locales = append(locales, locale)
 	}
@@ -46,16 +45,17 @@ func getLocales(CMA *contentful.Contentful, spaceID string) (locales []Locale, e
 func getContentTypes(CMA *contentful.Contentful, spaceID string) (contentTypes []ContentType, err error) {
 
 	col := CMA.ContentTypes.List(spaceID)
-	_, err = col.GetAll()
-	if err != nil {
-		log.Fatal("Couldn't get content types")
+	if _, err := col.GetAll(); err != nil {
+		return nil, fmt.Errorf("fetching content types: %w", err)
 	}
 	for _, item := range col.Items {
 		var contentType ContentType
-		byteArray, _ := json.Marshal(item)
-		err = json.NewDecoder(bytes.NewReader(byteArray)).Decode(&contentType)
+		byteArray, err := json.Marshal(item)
 		if err != nil {
-			break
+			return nil, fmt.Errorf("JSON encoding item: %w", err)
+		}
+		if err := json.Unmarshal(byteArray, &contentType); err != nil {
+			return nil, fmt.Errorf("JSON decoding item: %w", err)
 		}
 		contentTypes = append(contentTypes, contentType)
 	}
@@ -68,16 +68,16 @@ func getData(spaceID, cmaKey string, flagContentTypes []string) (finalContentTyp
 	CMA.Debug = false
 
 	// Get space locales
-	locales, errGetLocales := getLocales(CMA, spaceID)
-	if errGetLocales != nil {
-		return nil, nil, errors.New("Could not get locales: " + errGetLocales.Error())
+	locales, err = getLocales(CMA, spaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getting locales: %w", err)
 	}
 	fmt.Println("Locales found:", locales)
 
 	// Get content types
 	contentTypes, err := getContentTypes(CMA, spaceID)
 	if err != nil {
-		return nil, nil, errors.New("Could not get content types")
+		return nil, nil, fmt.Errorf("getting content types: %w", err)
 	}
 	fmt.Println("Content types found:", len(contentTypes))
 
@@ -100,16 +100,15 @@ func getData(spaceID, cmaKey string, flagContentTypes []string) (finalContentTyp
 }
 
 // GenerateAPI calls the generators
-func GenerateAPI(dir, packageName, spaceID, cmaKey string, flagContentTypes []string) (err error) {
-	contentTypes, locales, errGetData := getData(spaceID, cmaKey, flagContentTypes)
-	if errGetData != nil {
-		return errGetData
+func GenerateAPI(dir, packageName, spaceID, cmaKey string, flagContentTypes []string) error {
+	contentTypes, locales, err := getData(spaceID, cmaKey, flagContentTypes)
+	if err != nil {
+		return err
 	}
 
 	packageDir := filepath.Join(dir, packageName)
-	errMkdir := os.MkdirAll(packageDir, 0766)
-	if errMkdir != nil {
-		return errMkdir
+	if err := os.MkdirAll(packageDir, 0766); err != nil {
+		return fmt.Errorf("creating package dir: %w", err)
 	}
 	funcMap := getFuncMap()
 	conf := spaceConf{
